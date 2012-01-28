@@ -1,4 +1,5 @@
 <html>
+  
   <script>
   	// fake value for power consumption 
  	var power = 20;
@@ -265,19 +266,7 @@
       sites[site] = sites[site] + seconds;
       localStorage.sites = JSON.stringify(sites);
     }
-    /**
-     * Updates the amount of time we have spent on a given site.
-     * @param {string} site The site to update.
-     * @param {float} seconds The number of seconds to add to the counter.
-     */
-    function updatePower(site, seconds) {
-      var power = JSON.parse(localStorage.power);
-      if (!power[site]) {
-        power[site] = 0;
-      }
-      power[site] = sites[site] * power;
-      localStorage.power = JSON.stringify(sites);
-    }
+    
     /**
      * Initailized our storage and sets up tab listeners.
      */
@@ -303,19 +292,20 @@
       *  counters when this sort of stuff happens. */
       chrome.tabs.onSelectionChanged.addListener(
       function(tabId, selectionInfo) {
-        console.log("Tab changed");
+        console.log("Tab changed");            
         resetActivity();
         currentTabId = tabId;
         updateCounter();
       });
 
       chrome.tabs.onUpdated.addListener(
-      function(tabId, changeInfo, tab) {
-        if (tabId == currentTabId) {
-          console.log("Tab updated");
-          updateCounter();
+        function(tabId, changeInfo, tab) {
+          if (tabId == currentTabId) {
+           console.log("Tab updated");
+            updateCounter();
+          }
         }
-      });
+      );
 
       chrome.windows.onFocusChanged.addListener(
       function(windowId) {

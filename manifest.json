@@ -4,7 +4,8 @@
   "description": "Keeps track of how much energy you spend on the Guardian.",
   "background_page": "background.html",
   "permissions": [
-    "tabs"
+    "tabs",
+    "geolocation"
   ],
   "browser_action": {
     "default_icon": "images/icon.png",

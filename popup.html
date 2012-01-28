@@ -1,257 +1,370 @@
 <html>
-  <head>
+	<head>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				/* Setting default text color, background and a font stack */
+				font-size: 10px;
+				color: #666;
+				/* A webkit gradient: */
+				background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#DDD));
+				text-shadow: 1px 1px 0 white;
+				font-family: Arial, Helvetica, sans-serif;
+				overflow-x: hidden;
+				width: 522px;
+				padding: 10px;
+			}
+			a:link, a:visited {
+				color: green;
+				text-decoration: none;
+				float: left;
+				padding: 10px;
+				border-radius: 9px;
+				background: white;
+				margin: 5px;
+			}
+			a:hover, a:focus, a:active {
+				text-decoration: underline;
+			}
+			table {
+				/* Webkit CSS3 Reflection */
+				-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(0.75, transparent), to(rgba(255, 255, 255, 0.3))) 0 0 0 0 stretch stretch;
+				float: left;
+				clear: both;
+				width: 500px;
+				border: 1px solid silver;
+				/*				webkit-box-shadow: 3px 3px 5px 6px #ccc;*/
+				box-shadow: 3px 3px 5px 6px #ccc;
+				border-radius: 7px;
+				margin: 10px 0;
+			}
+			td, th {
+				color: black;
+				/*				border-bottom: 1px solid grey;*/
+				padding: 2px;
+				font-size: 12px;
+			}
+			#map_canvas {
+				width: 500px;
+				height: 300px;
+			}
+			#latitude, #longitude {
+				padding-top: 5px;
+				padding-bottom: 5px;
+				float: left;
+				width: 170px;
+			}
+			#accuracy {
+				padding-top: 5px;
+				padding-bottom: 15px;
+				float: right;
+				width: 170px;
+				color: #0000FF;
+			}
+		</style>
+		<script src='jquery-1.7.1.js'></script>
+		<script src='jquery.url.js'></script>
+		<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+		<script>
+			// fake - 30W power consumption
+			var power = 30;
 
+			/**
+			 * return the google maps compatibe geolocation for a site.
+			 */
+			function getGeolocationForSite(site) {
 
-  <style>
+				// use jquery-url to extract host
+				var hostName = $.url(site).attr('host');
+				console.log(hostName);
 
-  *{
-  margin:0;
-  padding:0;
-}
+			}
 
-body{
-  /* Setting default text color, background and a font stack */
-  font-size:10px;
-  color:#666;
+			function addFrame() {
+				console.log('add frame');
+				/*var iframe = document.createElement("iframe");
+				 iframe.setAttribute("src", "http://browser-timetracker.appspot.com/stats/view?now=" +
+				 escape(new Date().getTime()/1000));
+				 iframe.setAttribute("width", "400px");
+				 iframe.setAttribute("height", "400px");
+				 iframe.setAttribute("id", "stats_frame");
+				 document.getElementById("stats").appendChild(iframe);*/
+			}
 
-  /* A webkit gradient: */
-  background:-webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#DDD));
+			function addIgnoredSite(new_site) {
+				return function() {
+					chrome.extension.sendRequest({
+						action : "addIgnoredSite",
+						site : new_site
+					}, function(response) {
+						initialize();
+					});
+				};
+			}
 
-  text-shadow:1px 1px 0 white;
-  font-family:Arial, Helvetica, sans-serif;
-  overflow-x:hidden;
-  width:522px;
-  padding: 10px;
-}
+			function addLocalDisplay() {
+				var table = document.createElement("table");
+				var row = document.createElement("tr");
+				var cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Site"));
+				table.style.border = "1px solid black";
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Minutes"));
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Percent"));
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Energy"));
+				row.appendChild(cell);
+				table.appendChild(row);
+				var sites = JSON.parse(localStorage.sites);
 
-a:link, a:visited {
-  color:green;
-  text-decoration:none;
-  float: left;
-  padding:10px;
-  border-radius:9px;
-  background:white;
-  margin:5px;
-}
-a:hover, a:focus, a:active {
-  text-decoration:underline;
-}
+				/* Sort sites by time spent */
+				var sortedSites = new Array();
+				var totalTime = 0;
+				for(site in sites) {
+					sortedSites.push([site, sites[site]]);
+					totalTime += sites[site];
+				}
+				sortedSites.sort(function(a, b) {
+					return b[1] - a[1];
+				});
+				/* Show only the top 15 sites by default */
+				var max = 15;
+				if(document.location.href.indexOf("show=all") != -1) {
+					max = sortedSites.length;
+				}
 
-table{
-  /* Webkit CSS3 Reflection */
-  -webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(0.75, transparent), to(rgba(255, 255, 255, 0.3))) 0 0 0 0 stretch stretch;
-    float:left;
-    clear:both;
-    width:500px;
-    border:1px solid silver;
-    webkit-box-shadow: 3px 3px 5px 6px #ccc;
-    box-shadow:         3px 3px 5px 6px #ccc;
-    border-radius:7px;
-    margin:10px 0;
-}
+				/* Add total row. */
+				row = document.createElement("tr");
+				cell = document.createElement("td");
+				cell.innerHTML = "<b>Total</b>";
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode((totalTime / 60).toFixed(2)));
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode(("100")));
+				row.appendChild(cell);
+				table.appendChild(row);
 
-  td,th {
-    color: black;
-    border-bottom:1px solid grey;
-    padding:2px;
-    font-size:12px;
-  }
+				for(var index = 0; ((index < sortedSites.length) && (index < max)); index++) {
+					var site = sortedSites[index][0];
+					row = document.createElement("tr");
+					cell = document.createElement("td");
+					var removeImage = document.createElement("img");
+					removeImage.src = chrome.extension.getURL("images/remove.png");
+					removeImage.title = "Remove and stop tracking.";
+					removeImage.width = 10;
+					removeImage.height = 10;
+					removeImage.onclick = addIgnoredSite(site);
+					cell.appendChild(removeImage);
+					cell.appendChild(document.createTextNode(site));
+					// time
+					row.appendChild(cell);
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode((sites[site] / 60).toFixed(2)));
+					row.appendChild(cell);
+					// percentage
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode((sites[site] / totalTime * 100).toFixed(2)));
+					row.appendChild(cell);
+					// energy
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode(sites[site] * power));
+					row.appendChild(cell);
+					table.appendChild(row);
+				}
+				document.getElementById("stats").appendChild(table);
 
-  </style>
+				/* Add an option to show all stats */
+				var showAllLink = document.createElement("a");
+				showAllLink.onclick = function() {
+					chrome.tabs.create({
+						url : "popup.html?show=all"
+					});
+				}
+				/* Show the "Show All" link if there are some sites we didn't show. */
+				if(max < sortedSites.length) {
+					showAllLink.setAttribute("href", "javascript:void(0)");
+					showAllLink.appendChild(document.createTextNode("Show All"));
+					document.getElementById("options").appendChild(showAllLink);
+				}
+			}
 
+			function sendStats() {
+				chrome.extension.sendRequest({
+					action : "sendStats"
+				}, function(response) {
+					/* Reload the iframe. */
+					var iframe = document.getElementById("stats_frame");
+					iframe.src = iframe.src;
+				});
+			}
 
-  <script>
+			function clearStats() {
+				console.log("Request to clear stats.");
+				chrome.extension.sendRequest({
+					action : "clearStats"
+				}, function(response) {
+					initialize();
+				});
+			}
 
-  // fake - 30W power consumption
-  var power = 30;
+			function togglePause() {
+				console.log("In toggle pause");
+				console.log("Value = " + localStorage["paused"]);
+				if(localStorage["paused"] == "false") {
+					console.log("Setting to Resume");
+					chrome.extension.sendRequest({
+						action : "pause"
+					}, function(response) {
+					});
+					document.getElementById("toggle_pause").innerHTML = "Resume Timer";
+				} else if(localStorage["paused"] == "true") {
+					console.log("Setting to Pause");
+					chrome.extension.sendRequest({
+						action : "resume"
+					}, function(response) {
+					});
+					document.getElementById("toggle_pause").innerHTML = "Pause Timer";
+				}
+			}
 
- function addFrame() {
-  console.log('add frame');
-   /*var iframe = document.createElement("iframe");
-   iframe.setAttribute("src", "http://browser-timetracker.appspot.com/stats/view?now=" +
-                              escape(new Date().getTime()/1000));
-   iframe.setAttribute("width", "400px");
-   iframe.setAttribute("height", "400px");
-   iframe.setAttribute("id", "stats_frame");
-   document.getElementById("stats").appendChild(iframe);*/
- }
+			function initialize() {
 
- function addIgnoredSite(new_site) {
-   return function() {
-     chrome.extension.sendRequest(
-         {action: "addIgnoredSite", site: new_site},
-         function(response) {
-           initialize();
-         });
-   };
- }
+				var stats = document.getElementById("stats");
+				if(stats.childNodes.length == 1) {
+					stats.removeChild(stats.childNodes[0]);
+				}
 
- function addLocalDisplay() {
-   var table = document.createElement("table");
-   var row = document.createElement("tr");
-   var cell = document.createElement("th");
-   cell.appendChild(document.createTextNode("Site"));
-   table.style.border = "1px solid black";
-   row.appendChild(cell);
-   cell = document.createElement("th");
-   cell.appendChild(document.createTextNode("Minutes"));
-   row.appendChild(cell);
-   cell = document.createElement("th");
-   cell.appendChild(document.createTextNode("Percent"));
-   row.appendChild(cell);
-   cell = document.createElement("th");
-   cell.appendChild(document.createTextNode("Energy"));
-   row.appendChild(cell);
-   table.appendChild(row);
-   var sites = JSON.parse(localStorage.sites);
+				if(localStorage["storageType"] == "appengine") {
+					addFrame();
+				} else if(localStorage["storageType"] == "local") {
+					addLocalDisplay();
+				}
 
-   /* Sort sites by time spent */
-   var sortedSites = new Array();
-   var totalTime = 0;
-   for (site in sites) {
-     sortedSites.push([site, sites[site]]);
-     totalTime += sites[site];
-   }
-   sortedSites.sort(function(a, b) {
-     return b[1] - a[1];
-   });
+				var link = document.getElementById("toggle_pause");
+				if(localStorage["paused"] == undefined || localStorage["paused"] == "false") {
+					localStorage["paused"] = "false";
+					link.innerHTML = "Pause Timer";
+				} else {
+					link.innerHTML = "Resume Timer";
+				}
 
-   /* Show only the top 15 sites by default */
-   var max = 15;
-   if (document.location.href.indexOf("show=all") != -1) {
-     max = sortedSites.length;
-   }
+				var nextClearStats = localStorage["nextTimeToClear"];
+				if(nextClearStats) {
+					nextClearStats = parseInt(nextClearStats, 10);
+					nextClearStats = new Date(nextClearStats);
+					var nextClearDiv = document.getElementById("nextClear");
+					if(nextClearDiv.childNodes.length == 1) {
+						nextClearDiv.removeChild(nextClear.childNodes[0]);
+					}
+					nextClearDiv.appendChild(document.createTextNode("Next Reset: " + nextClearStats.toString()));
+				}
+				getGeoLocation();
+			}
 
-   /* Add total row. */
-   row = document.createElement("tr");
-   cell = document.createElement("td");
-   cell.innerHTML = "<b>Total</b>";
-   row.appendChild(cell);
-   cell = document.createElement("td");
-   cell.appendChild(document.createTextNode((totalTime / 60).toFixed(2)));
-   row.appendChild(cell);
-   cell = document.createElement("td");
-   cell.appendChild(document.createTextNode(("100")));
-   row.appendChild(cell);
-   table.appendChild(row);
+			// Getting Geo Location
+			function getGeoLocation() {
+				if(navigator.geolocation) {
+					navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+				} else {
+					document.getElementById("errorMsg").innerText = "ERROR: browser does not support geo location";
+				}
+			}
 
-   for (var index = 0; ((index < sortedSites.length) && (index < max));
-        index++ ){
-     var site = sortedSites[index][0];
-     row = document.createElement("tr");
-     cell = document.createElement("td");
-     var removeImage = document.createElement("img");
-     removeImage.src = chrome.extension.getURL("images/remove.png");
-     removeImage.title = "Remove and stop tracking.";
-     removeImage.width = 10;
-     removeImage.height = 10;
-     removeImage.onclick = addIgnoredSite(site);
-     cell.appendChild(removeImage);
-     cell.appendChild(document.createTextNode(site));
-     // time
-     row.appendChild(cell);
-     cell = document.createElement("td");
-     cell.appendChild(document.createTextNode((sites[site] / 60).toFixed(2)));
-     row.appendChild(cell);
-     // percentage
-     cell = document.createElement("td");
-     cell.appendChild(document.createTextNode(
-       (sites[site] / totalTime * 100).toFixed(2)));
-     row.appendChild(cell);
-     // energy
-     cell = document.createElement("td");
-     cell.appendChild(document.createTextNode(sites[site] * power));
-     row.appendChild(cell);
-     table.appendChild(row);
-   }
-   document.getElementById("stats").appendChild(table);
+			// Getting Geo Location success callback
+			function successCallback(position) {
 
-   /* Add an option to show all stats */
-   var showAllLink = document.createElement("a");
-   showAllLink.onclick = function() {
-     chrome.tabs.create({url: "popup.html?show=all"});
-   }
+				// Output the coordinates
+				document.getElementById("latitude").innerHTML = "Latitude: " + (+position.coords.latitude).toFixed(6);
+				document.getElementById("longitude").innerHTML = "Longitude: " + (+position.coords.longitude).toFixed(6);
+				document.getElementById("accuracy").innerHTML = "Accuracy: " + position.coords.accuracy + " m";
 
-   /* Show the "Show All" link if there are some sites we didn't show. */
-   if (max < sortedSites.length) {
-     showAllLink.setAttribute("href", "javascript:void(0)");
-     showAllLink.appendChild(document.createTextNode("Show All"));
-     document.getElementById("options").appendChild(showAllLink);
-   }
- }
+				// Show location on Google Map
+				var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
 
- function sendStats() {
-   chrome.extension.sendRequest({action: "sendStats"}, function(response) {
-     /* Reload the iframe. */
-     var iframe = document.getElementById("stats_frame");
-     iframe.src = iframe.src;
-   });
- }
+				var myOptions = {
+					zoom : getZoomLevel(position.coords.accuracy),
+					center : latlng,
+					mapTypeId : google.maps.MapTypeId.ROADMAP
+				};
 
- function clearStats() {
-   console.log("Request to clear stats.");
-   chrome.extension.sendRequest({action: "clearStats"}, function(response) {
-     initialize();
-   });
- }
+				var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
 
- function togglePause() {
-   console.log("In toggle pause");
-   console.log("Value = " + localStorage["paused"]);
-   if (localStorage["paused"] == "false") {
-     console.log("Setting to Resume");
-     chrome.extension.sendRequest({action: "pause"}, function(response) {});
-     document.getElementById("toggle_pause").innerHTML = "Resume Timer";
-   } else if (localStorage["paused"] == "true"){
-     console.log("Setting to Pause");
-     chrome.extension.sendRequest({action: "resume"}, function(response) {});
-     document.getElementById("toggle_pause").innerHTML = "Pause Timer";
-   }
- }
+				var marker = new google.maps.Marker({
+					position : latlng,
+					map : map,
+					title : "Your Location"
+				});
 
- function initialize() {
+				var circle = new google.maps.Circle({
+					map : map,
+					radius : position.coords.accuracy,
+					fillOpacity : 0.0,
+					strokeColor : '#0000FF',
+					strokeOpacity : 0.5
+				});
 
-   var stats = document.getElementById("stats");
-   if (stats.childNodes.length == 1) {
-     stats.removeChild(stats.childNodes[0]);
-   }
+				circle.bindTo('center', marker, 'position');
+			}
 
-   if (localStorage["storageType"] == "appengine") {
-     addFrame();
-   } else if (localStorage["storageType"] == "local") {
-     addLocalDisplay();
-   }
+			// Getting Geo Location error callback
+			function errorCallback(error) {
 
-   var link = document.getElementById("toggle_pause");
-   if (localStorage["paused"] == undefined || localStorage["paused"] == "false") {
-     localStorage["paused"] = "false";
-     link.innerHTML = "Pause Timer";
-   } else {
-     link.innerHTML = "Resume Timer";
-   }
+				switch(error.code) {
 
-   var nextClearStats = localStorage["nextTimeToClear"];
-   if (nextClearStats) {
-     nextClearStats = parseInt(nextClearStats, 10);
-     nextClearStats = new Date(nextClearStats);
-     var nextClearDiv = document.getElementById("nextClear");
-     if (nextClearDiv.childNodes.length == 1) {
-       nextClearDiv.removeChild(nextClear.childNodes[0]);
-     }
-     nextClearDiv.appendChild(
-       document.createTextNode("Next Reset: " + nextClearStats.toString()));
-   }
- }
+					case error.TIMEOUT:
+						document.getElementById("errorMsg").innerHTML = "ERROR: " + error.message;
+						break;
 
-  </script>
-</head>
-  <body onload="initialize()">
-    <div id="options">
-      <a id="toggle_pause" href="javascript:void(0)" onclick="togglePause()"></a>&nbsp;
-      <a href="javascript:void(0)" onclick="clearStats()">Clear *All* Stats</a>&nbsp;
-    </div>
-    <div id="nextClear">
-    </div>
-    <div id="stats"></div>
-  </body>
+					default:
+						document.getElementById("errorMsg").innerHTML = "ERROR: " + error.message;
+				};
+			}
+
+			// Get map zoom level corresponding to the locaiton's accuracy
+			function getZoomLevel(accuracy) {
+
+				if(2000 >= accuracy) {
+					return 13;
+				} else if(4000 >= accuracy) {
+					return 12;
+				} else if(8000 >= accuracy) {
+					return 11;
+				} else if(16000 >= accuracy) {
+					return 10;
+				} else {
+					return 9;
+				}
+			}
+		</script>
+	</head>
+	<body onload="initialize()">
+		<div id="options">
+			<a id="toggle_pause" href="javascript:void(0)" onclick="togglePause()"></a>&nbsp; <a href="javascript:void(0)" onclick="clearStats()">Clear *All* Stats</a>&nbsp;
+		</div>
+		<div id="nextClear"></div>
+		<div id="stats"></div>
+		<div class="section-header">
+			Geo Location
+		</div>
+		<div id="latitude">
+			Latitude: ...
+		</div>
+		<div id="longitude">
+			Longitude: ...
+		</div>
+		<div id="accuracy">
+			Accuracy: ...
+		</div>
+		<div id="errorMsg"></div>
+		<div id="map_canvas"></div>
+	</body>
 </html>
