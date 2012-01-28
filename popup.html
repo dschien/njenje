@@ -7,6 +7,7 @@
   }
 
   </style>
+  <link rel="stylesheet" src="css/styles.css" >
   <script>
 
  function addFrame() {
@@ -42,6 +43,9 @@
    row.appendChild(cell);
    cell = document.createElement("th");
    cell.appendChild(document.createTextNode("Percent"));
+   row.appendChild(cell);
+   cell = document.createElement("th");
+   cell.appendChild(document.createTextNode("Energy"));
    row.appendChild(cell);
    table.appendChild(row);
    var sites = JSON.parse(localStorage.sites);
@@ -89,13 +93,19 @@
      removeImage.onclick = addIgnoredSite(site);
      cell.appendChild(removeImage);
      cell.appendChild(document.createTextNode(site));
+     // time
      row.appendChild(cell);
      cell = document.createElement("td");
      cell.appendChild(document.createTextNode((sites[site] / 60).toFixed(2)));
      row.appendChild(cell);
+     // percentage
      cell = document.createElement("td");
      cell.appendChild(document.createTextNode(
        (sites[site] / totalTime * 100).toFixed(2)));
+     row.appendChild(cell);
+     // energy
+     cell = document.createElement("td");
+     cell.appendChild(document.createTextNode("add energy calc here"));
      row.appendChild(cell);
      table.appendChild(row);
    }
