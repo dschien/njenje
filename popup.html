@@ -10,6 +10,9 @@
   <link rel="stylesheet" src="css/styles.css" >
   <script>
 
+  // fake - 30W power consumption
+  var power = 30;
+
  function addFrame() {
   console.log('add frame');
    /*var iframe = document.createElement("iframe");
@@ -105,7 +108,7 @@
      row.appendChild(cell);
      // energy
      cell = document.createElement("td");
-     cell.appendChild(document.createTextNode("add energy calc here"));
+     cell.appendChild(document.createTextNode(sites[site] * power));
      row.appendChild(cell);
      table.appendChild(row);
    }
