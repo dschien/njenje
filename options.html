@@ -1,0 +1,113 @@
+<html>
+  <head><title>Time Tracker Preferences</title></head>
+  <script type="text/javascript">
+
+    function saveIdle() {
+      var idleCheck = document.getElementById("idle_check");
+      if (idleCheck.checked) {
+        localStorage["idleDetection"] = "true";
+      } else {
+        localStorage["idleDetection"] = "false";
+      }
+    }
+
+    function updateClearStatsInterval() {
+      var select = document.getElementById("clear_stats_interval");
+      var option = select.options[select.selectedIndex];
+      localStorage["clearStatsInterval"] = option.value;
+      if (localStorage["nextTimeToClear"]) {
+        delete localStorage["nextTimeToClear"];
+      }
+      restoreOptions();
+    }
+
+    function addIgnoredSite() {
+      var newSite = document.getElementById("new_ignored_site").value;
+      if (newSite.indexOf("http://") != 0 &&
+          newSite.indexOf("https://") != 0) {
+        alert("Include http:// or https:// prefix.");
+        return;
+      }
+
+      chrome.extension.sendRequest(
+         {action: "addIgnoredSite", site: newSite},
+         function(response) {
+           restoreOptions();
+         });
+    }
+
+    function removeIgnoredSites() {
+      var select = document.getElementById("ignored_sites");
+      var ignoredSites = [];
+      for (var i = 0; i < select.children.length; i++) {
+        var child = select.children[i];
+        if (child.selected == false) {
+          ignoredSites.push(child.value);
+        }
+      }
+      localStorage['ignoredSites'] = JSON.stringify(ignoredSites);
+      restoreOptions();
+    }
+
+    // Restores options from localStorage, if available.
+    function restoreOptions() {
+      var idleCheck = document.getElementById("idle_check");
+      var idleDetection = localStorage["idleDetection"];
+      if (!idleDetection || idleDetection == "false") {
+        idle_check.checked = false;
+      } else {
+        idle_check.checked = true;
+      }
+
+      var ignoredSites = localStorage['ignoredSites'];
+      if (!ignoredSites) {
+        return;
+      }
+      ignoredSites = JSON.parse(ignoredSites);
+      var select = document.getElementById("ignored_sites");
+      select.options.length = 0;
+      for (var i in ignoredSites) {
+        var option = document.createElement("option");
+        option.text = ignoredSites[i];
+        option.value = ignoredSites[i];
+        select.appendChild(option);
+      }
+
+      var clearStatsInterval = localStorage['clearStatsInterval'];
+      if (!clearStatsInterval) {
+        clearStatsInterval = "0";
+      }
+      select = document.getElementById("clear_stats_interval");
+      for (var i = 0; i < select.options.length; i++) {
+        var option = select.options[i];
+        if (option.value == clearStatsInterval) {
+          option.selected = true;
+          break;
+        }
+      }
+    }
+
+  </script>
+
+  <body onload="restoreOptions()">
+    <input type="checkbox" id="idle_check" onclick="saveIdle()"><b>Idle Detection</b>: When enabled, time
+    tracker attempts to detect if you are actively using the browser or not and
+    will pause and resume automatically. If disabled, you must pause and resume
+    the timer yourself.
+    <br/>
+    <b>Manage Ignored Sites</b>: <br/>
+    <input type="text" id="new_ignored_site"></input>
+    <button onclick="addIgnoredSite()">Add</button><br/>
+    <select id="ignored_sites" MULTIPLE size="10">
+    </select><br/>
+    <button onclick="removeIgnoredSites()">Remove Selected</button>
+    <br/>
+    <b>Clear Statistics Every:</b>:
+    <select id="clear_stats_interval" onchange="updateClearStatsInterval()">
+      <option value="0">never</option>
+      <option value="3600">Hour</option>
+      <option value="86400">Day</option>
+    </select>
+  </body>
+
+  </body>
