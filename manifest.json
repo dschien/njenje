@@ -5,7 +5,8 @@
   "background_page": "background.html",
   "permissions": [
     "tabs",
-    "geolocation"
+    "geolocation",
+    "http://*/"
   ],
   "browser_action": {
     "default_icon": "images/icon.png",

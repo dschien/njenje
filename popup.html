@@ -47,6 +47,10 @@
 				padding: 2px;
 				font-size: 12px;
 			}
+			#images {
+				width: 500px;
+				height: 100px;
+			}
 			#map_canvas {
 				width: 500px;
 				height: 300px;
@@ -69,6 +73,9 @@
 		<script src='jquery.url.js'></script>
 		<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
 		<script>
+		
+			var bkg = chrome.extension.getBackgroundPage();
+			
 			// fake - 30W power consumption
 			var power = 30;
 
@@ -121,6 +128,9 @@
 				cell = document.createElement("th");
 				cell.appendChild(document.createTextNode("Energy"));
 				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Carbon"));
+				row.appendChild(cell);
 				table.appendChild(row);
 				var sites = JSON.parse(localStorage.sites);
 
@@ -159,11 +169,16 @@
 					cell = document.createElement("td");
 					var removeImage = document.createElement("img");
 					removeImage.src = chrome.extension.getURL("images/remove.png");
+					
+					// TODO spacer
+					
 					removeImage.title = "Remove and stop tracking.";
 					removeImage.width = 10;
 					removeImage.height = 10;
 					removeImage.onclick = addIgnoredSite(site);
 					cell.appendChild(removeImage);
+					
+					// TODO truncate text, maybe?
 					cell.appendChild(document.createTextNode(site));
 					// time
 					row.appendChild(cell);
@@ -236,8 +251,23 @@
 				}
 			}
 
-			function initialize() {
+			function setDevicePower() {
+				if(localStorage["deviceType"] == "laptop") {
+					bkg.console.log("[popup] - setting device power to 30W");
+					power = 30;
+				} else {
+					// assume it's a desktop
+					bkg.console.log("[popup] - setting device power to 78W");
+					power = 78;
+				}
+			}
 
+			function initialize() {
+				
+				// initialise the device power value from the user defined option
+				setDevicePower();
+				
+				
 				var stats = document.getElementById("stats");
 				if(stats.childNodes.length == 1) {
 					stats.removeChild(stats.childNodes[0]);
@@ -267,7 +297,32 @@
 					}
 					nextClearDiv.appendChild(document.createTextNode("Next Reset: " + nextClearStats.toString()));
 				}
+
+				// get the own geo ip
 				getGeoLocation();
+
+				var bkg = chrome.extension.getBackgroundPage();
+				getLocationForServer('74.200.247.59');
+		
+			}
+
+			function getLocationForServer(server) {
+				
+				bkg.console.log('foo');
+				// var reqString = 'http://freegeoip.net/json/74.200.247.59';
+				var reqSrv = 'http://freegeoip.net/json/';
+				var location = {};
+
+				$.getJSON(reqSrv + server, function(data) {
+					bkg.console.log(data['latitude']);
+					location['latitude'] = data.latitude;
+					bkg.console.log(data.longitude);
+					location['longitude'] = data.longitude;
+					
+					document.getElementById("map").addLocation
+				});
+				return location;
+
 			}
 
 			// Getting Geo Location
@@ -366,5 +421,6 @@
 		</div>
 		<div id="errorMsg"></div>
 		<div id="map_canvas"></div>
+		<div id="images">
 	</body>
 </html>
