@@ -530,18 +530,25 @@
 		<h1 style="color:#222">njenje - The Dynamic Media Carbon/Energy Tracker</h1>
 		
 		
-		<div id='energyIntensityStatus' style="background-color:white;padding:1em;margin-top:2em;margin-bottom:1em;border:1px solid #666">
+		<div id='energyIntensityStatus' style="background-color:white;padding:1em;margin-top:2em;margin-bottom:1em;border:1px solid #666;min-height:42px;border-radius: 4px;">
 			<div id="options" style="float:right;margin-left:7em">
 				<a id="toggle_pause" href="javascript:void(0)" onclick="togglePause()"></a>&nbsp; <a href="javascript:void(0)" onclick="clearStats()">Clear *All* Stats</a>&nbsp;
 			</div>
 			
 			<img src="green-icon.jpeg" width=40px height=40px style="float:right;"></img>
 			
-			<p style="margin-top:1em;color:#222;font-size:15px;font-weight:bold;">Current Carbon Intensity</p>
+			<h2 style="color:#222;font-size:15px;font-weight:bold;">Current Carbon Intensity</h2>
 			<p>Dynamic based on AMEE data</p>
 			
 			
 		</div>
+		
+		<div style="clear:both;margin-top:2em;margin-bottom:1em;font-size:12px">
+			
+			<h2 style="color:black">How your energy has been used</h2>
+			
+		</div>
+		
 		<div id="chart_div"></div>
 		
 		<div id="nextClear"></div>
@@ -559,9 +566,9 @@
 		</div>
 		<div id="errorMsg"></div>
 		
-		<div style="clear:both">
+		<div style="clear:both;margin-top:2em;margin-bottom:1em;font-size:12px">
 			
-			<h2>Servers used in media delivery</h2>
+			<h2 style="color:black">Servers used in media delivery</h2>
 			
 		</div>
 		
