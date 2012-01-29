@@ -1,0 +1,70 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+.myText {
+	color: blue;
+}
+body {
+	/* Setting default text color, background and a font stack */
+	font-size: 10px;
+	color: #666;
+	/* A webkit gradient: */
+	background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#DDD));
+	text-shadow: 1px 1px 0 white;
+	font-family: Arial, Helvetica, sans-serif;
+	overflow-x: hidden;
+	width: 600px;
+	padding: 10px;
+}
+a:link, a:visited {
+	color: green;
+	text-decoration: none;
+	float: left;
+	padding: 10px;
+	border-radius: 9px;
+	background: white;
+	margin: 5px;
+}
+a:hover, a:focus, a:active {
+	text-decoration: underline;
+}
+table {
+	/* Webkit CSS3 Reflection */
+	-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(0.75, transparent), to(rgba(255, 255, 255, 0.3))) 0 0 0 0 stretch stretch;
+	float: left;
+	clear: both;
+	width: 500px;
+	border: 1px solid silver;
+	/*				webkit-box-shadow: 3px 3px 5px 6px #ccc;*/
+	box-shadow: 3px 3px 5px 6px #ccc;
+	border-radius: 7px;
+	margin: 10px 0;
+}
+td, th {
+	color: black;
+	/*				border-bottom: 1px solid grey;*/
+	padding: 2px;
+	font-size: 12px;
+}
+#images {
+	width: 500px;
+	height: 100px;
+}
+#map_canvas {
+	width: 500px;
+	height: 300px;
+}
+#latitude, #longitude {
+	padding-top: 5px;
+	padding-bottom: 5px;
+	float: left;
+	width: 170px;
+}
+#accuracy {
+	padding-top: 5px;
+	padding-bottom: 15px;
+	float: right;
+	width: 170px;
+	color: #0000FF;
+}
