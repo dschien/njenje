@@ -113,6 +113,7 @@
 			}
 
 			function addLocalDisplay() {
+				
 				var table = document.createElement("table");
 				var row = document.createElement("tr");
 				var cell = document.createElement("th");
@@ -341,7 +342,7 @@
 				document.getElementById("latitude").innerHTML = "Latitude: " + (+position.coords.latitude).toFixed(6);
 				document.getElementById("longitude").innerHTML = "Longitude: " + (+position.coords.longitude).toFixed(6);
 				document.getElementById("accuracy").innerHTML = "Accuracy: " + position.coords.accuracy + " m";
-
+	
 				// Show location on Google Map
 				var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
 
