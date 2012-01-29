@@ -1,5 +1,6 @@
 <html>
-	
+	<script src='jquery-1.7.1.js'></script>
+	<script src='jquery.url.js'></script>
 	<script>
 		// fake value for power consumption
 		var power = 20;
@@ -22,36 +23,44 @@
 		 * @return {string} The site, including protocol, but not paths.
 		 */
 		function getSiteFromUrl(url) {
-			var match = url.match(siteRegexp);
-			//var match = url.match(/http:\/\/guardian.co.uk/i);
-			console.log('url:' + url);
-			console.log('match:' + match);
+			// var url = $.url(url);
+			// var hostName = url.attr('host');
+			// console.log('current site:' + hostName);
+			// return hostName;
 
-			console.log('match:' + match[0]);
-			console.log('match:' + match[1]);
+			//TODO decide what to log for
+			return url;
 
-			if(match[1] === "http://www.guardian.co.uk") {
-				console.log('guardian');
-			}
-
-			//if (match) {
-			if(match[1] === "http://www.guardian.co.uk") {
-				/* Check the ignored list. */
-				var ignoredSites = localStorage["ignoredSites"];
-				if(!ignoredSites) {
-					ignoredSites = [];
-				} else {
-					ignoredSites = JSON.parse(ignoredSites);
-				}
-				for(i in ignoredSites) {
-					if(ignoredSites[i] == match[1]) {
-						console.log("Site is on ignore list: " + match[1]);
-						return null;
-					}
-				}
-				return match[0];
-			}
-			return null;
+			// var match = url.match(siteRegexp);
+			// //var match = url.match(/http:\/\/guardian.co.uk/i);
+			// console.log('url:' + url);
+			// console.log('match:' + match);
+			//
+			// console.log('match:' + match[0]);
+			// console.log('match:' + match[1]);
+			//
+			// if(match[1] === "http://www.guardian.co.uk") {
+			// console.log('guardian');
+			// }
+			//
+			// //if (match) {
+			// if(match[1] === "http://www.guardian.co.uk") {
+			// /* Check the ignored list. */
+			// var ignoredSites = localStorage["ignoredSites"];
+			// if(!ignoredSites) {
+			// ignoredSites = [];
+			// } else {
+			// ignoredSites = JSON.parse(ignoredSites);
+			// }
+			// for(i in ignoredSites) {
+			// if(ignoredSites[i] == match[1]) {
+			// console.log("Site is on ignore list: " + match[1]);
+			// return null;
+			// }
+			// }
+			// return match[0];
+			// }
+			// return null;
 		}
 
 		function checkIdleTime() {
@@ -172,7 +181,7 @@
 					 * the last time we were ran. */
 					var now = new Date();
 					var delta = now.getTime() - startTime.getTime();
-					updateTime(currentSite, delta / 1000);
+					updateTime(currentSite, delta / 1000, tab);
 
 					/* This function could have been called as the result of a tab change,
 					 * which means the site may have changed. */
@@ -261,14 +270,51 @@
 		}
 
 		/**
-		 * Updates the amount of time we have spent on a given site.
+		 * Updates the amount of time we HAVE spent on a given site.
+		 * In other words, this is called when navigating AWAY fom a page.
 		 * @param {string} site The site to update.
 		 * @param {float} seconds The number of seconds to add to the counter.
 		 */
-		function updateTime(site, seconds) {
+		function updateTime(site, seconds, tab) {
 			var sites = JSON.parse(localStorage.sites);
 			if(!sites[site]) {
+				// no entry found - new site ?
 				sites[site] = 0;
+				var titles = null;
+				if(localStorage.tabTitles) {
+					titles = JSON.parse(localStorage.tabTitles);
+				} else {
+					titles = {};
+				}
+				console.assert(titles);
+				console.log("Titles: " + titles);
+				console.log("title existing: " + titles[tab.url]);
+				
+				// check if the titles array already has the name of this tab
+				if(!titles[tab.url]) {
+					console.log("Adding new site: " + tab.url);
+					console.log("Title: " + tab.title);
+
+					// add title for url
+					titles[tab.url] = tab.title;
+
+					console.assert(titles[tab.url]);
+
+					// save the obj to storage
+					localStorage.tabTitles = JSON.stringify(titles);
+
+					// var stringified = JSON.stringify(tab.title);
+					// console.log("stringified: " + stringified);
+					// var url = JSON.stringify(tab.url);
+					// console.log ("strngfd version: " + url);
+					//
+					// var newObj = {};
+					// titles[tab.url] = tab.title;
+					//
+					// console.log("Adding new title: " + titles[tab.url]);
+
+				}
+
 			}
 			sites[site] = sites[site] + seconds;
 			localStorage.sites = JSON.stringify(sites);
@@ -278,9 +324,16 @@
 		 * Initailized our storage and sets up tab listeners.
 		 */
 		function initialize() {
-			
+
+			// localStorage.removeItem('sites');
 			if(!localStorage.sites) {
 				localStorage.sites = JSON.stringify({});
+			}
+			
+			// localStorage.removeItem('tabTitles');
+			if(!localStorage.tabTitles) {
+				console.log("Creating titles obj in storage.");
+				localStorage.tabTitles = JSON.stringify({});
 			}
 
 			if(!localStorage.paused) {

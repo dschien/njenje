@@ -171,7 +171,6 @@
 					removeImage.src = chrome.extension.getURL("images/remove.png");
 					
 					// TODO spacer
-					
 					removeImage.title = "Remove and stop tracking.";
 					removeImage.width = 10;
 					removeImage.height = 10;
@@ -179,7 +178,9 @@
 					cell.appendChild(removeImage);
 					
 					// TODO truncate text, maybe?
-					cell.appendChild(document.createTextNode(site));
+					var title = JSON.parse(localStorage.tabTitles)[site];
+					bkg.console.log("[popup] writing title" + title);
+					cell.appendChild(document.createTextNode(title));
 					// time
 					row.appendChild(cell);
 					cell = document.createElement("td");
