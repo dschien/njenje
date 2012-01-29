@@ -5,6 +5,9 @@
 				margin: 0;
 				padding: 0;
 			}
+			.myText {
+				color: blue;
+			}
 			body {
 				/* Setting default text color, background and a font stack */
 				font-size: 10px;
@@ -114,6 +117,12 @@
 			var energyData = new Array()
 
 			function addLocalDisplay() {
+				var currentTitle = null;
+				chrome.tabs.getCurrent(function(tab) {
+					bkg.console.log("title: " + tab.title);
+					currentTitle = tab.title;
+				});
+				bkg.console.log("currentTitle: " + currentTitle);
 
 				var table = document.createElement("table");
 				var row = document.createElement("tr");
@@ -137,7 +146,7 @@
 				var sites = JSON.parse(localStorage.sites);
 
 				/* Sort sites by time spent */
-					var co2Eq = 0.52;
+				var co2Eq = 0.52;
 				var sortedSites = new Array();
 				var totalTime = 0;
 				var totalEnergy = 0;
@@ -174,7 +183,7 @@
 				cell = document.createElement("td");
 				cell.appendChild(document.createTextNode(totalCarbon.toFixed(2)));
 				row.appendChild(cell);
-				
+
 				table.appendChild(row);
 
 				for(var index = 0; ((index < sortedSites.length) && (index < max)); index++) {
@@ -196,7 +205,12 @@
 					bkg.console.log("[popup] writing title" + title);
 					var titleLength = 30;
 
-					cell.appendChild(document.createTextNode(title.substring(0, Math.min(titleLength, title.length))));
+					var tn = document.createTextNode(title.substring(0, Math.min(titleLength, title.length)));
+					if(title == currentTitle) {
+						tn = tn.className += "myText";
+					}
+
+					cell.appendChild(tn);
 					// time
 					row.appendChild(cell);
 					cell = document.createElement("td");
@@ -211,13 +225,13 @@
 					var energy = sites[site] * power / 3600;
 					cell.appendChild(document.createTextNode((energy).toFixed(2)));
 					row.appendChild(cell);
-				
-					// carbon 
+
+					// carbon
 					var carbon = energy * co2Eq;
 					cell = document.createElement("td");
 					cell.appendChild(document.createTextNode(carbon.toFixed(2)));
 					row.appendChild(cell);
-					
+
 					table.appendChild(row);
 				}
 				document.getElementById("stats").appendChild(table);
