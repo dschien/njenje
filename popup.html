@@ -501,8 +501,11 @@
 				
 				for(var index = 0; ((index < sortedSites.length) && (index < max)); index++) {
 					var site = sortedSites[index][0];
+					var title = JSON.parse(localStorage.tabTitles)[site];
+				
+					
 					data.addRows([
-						[site, (sites[site].toFixed(6) * power.toFixed(2))]]);
+						[title, (sites[site].toFixed(6) * power.toFixed(2))]]);
 				}
 				
 					
