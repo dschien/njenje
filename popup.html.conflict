@@ -1,0 +1,871 @@
+<html>
+	<head>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				/* Setting default text color, background and a font stack */
+				font-size: 10px;
+				color: #666;
+				/* A webkit gradient: */
+				background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#EEE), to(#DDD));
+				text-shadow: 1px 1px 0 white;
+				font-family: Arial, Helvetica, sans-serif;
+				overflow-x: hidden;
+				width: 600px;
+				padding: 10px;
+			}
+			a:link, a:visited {
+				color: green;
+				text-decoration: none;
+				float: left;
+				padding: 10px;
+				border-radius: 9px;
+				background: white;
+				margin: 5px;
+			}
+			a:hover, a:focus, a:active {
+				text-decoration: underline;
+			}
+			table {
+				/* Webkit CSS3 Reflection */
+				-webkit-box-reflect: below 0 -webkit-gradient(linear, left top, left bottom, from(transparent), color-stop(0.75, transparent), to(rgba(255, 255, 255, 0.3))) 0 0 0 0 stretch stretch;
+				float: left;
+				clear: both;
+				width: 500px;
+				border: 1px solid silver;
+				/*				webkit-box-shadow: 3px 3px 5px 6px #ccc;*/
+				box-shadow: 3px 3px 5px 6px #ccc;
+				border-radius: 7px;
+				margin: 10px 0;
+			}
+			td, th {
+				color: black;
+				/*				border-bottom: 1px solid grey;*/
+				padding: 2px;
+				font-size: 12px;
+			}
+			#images {
+				width: 500px;
+				height: 100px;
+			}
+			#map_canvas {
+				width: 500px;
+				height: 300px;
+			}
+			#latitude, #longitude {
+				padding-top: 5px;
+				padding-bottom: 5px;
+				float: left;
+				width: 170px;
+			}
+			#accuracy {
+				padding-top: 5px;
+				padding-bottom: 15px;
+				float: right;
+				width: 170px;
+				color: #0000FF;
+			}
+		</style>
+		<script src='jquery-1.7.1.js'></script>
+		<script src='jquery.url.js'></script>
+		<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+		<script>
+			var bkg = chrome.extension.getBackgroundPage();
+
+			// fake - 30W power consumption
+			var power = 30;
+
+			/**
+			 * return the google maps compatibe geolocation for a site.
+			 */
+			function getGeolocationForSite(site) {
+
+				// use jquery-url to extract host
+				var hostName = $.url(site).attr('host');
+				console.log(hostName);
+
+			}
+
+			function addFrame() {
+				console.log('add frame');
+				/*var iframe = document.createElement("iframe");
+				 iframe.setAttribute("src", "http://browser-timetracker.appspot.com/stats/view?now=" +
+				 escape(new Date().getTime()/1000));
+				 iframe.setAttribute("width", "400px");
+				 iframe.setAttribute("height", "400px");
+				 iframe.setAttribute("id", "stats_frame");
+				 document.getElementById("stats").appendChild(iframe);*/
+			}
+
+			function addIgnoredSite(new_site) {
+				return function() {
+					chrome.extension.sendRequest({
+						action : "addIgnoredSite",
+						site : new_site
+					}, function(response) {
+						initialize();
+					});
+				};
+			}
+
+			var energyData = new Array()
+
+			function addLocalDisplay() {
+
+				var table = document.createElement("table");
+				var row = document.createElement("tr");
+				var cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Site"));
+				table.style.border = "1px solid black";
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Minutes"));
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Percent"));
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("Energy [Wh]"));
+				row.appendChild(cell);
+				cell = document.createElement("th");
+				cell.appendChild(document.createTextNode("[g-CO2-e] "));
+				row.appendChild(cell);
+				table.appendChild(row);
+				var sites = JSON.parse(localStorage.sites);
+
+				/* Sort sites by time spent */
+					var co2Eq = 0.52;
+				var sortedSites = new Array();
+				var totalTime = 0;
+				var totalEnergy = 0;
+				var totalCarbon = 0;
+				for(site in sites) {
+					sortedSites.push([site, sites[site]]);
+					totalTime += sites[site];
+					totalEnergy += sites[site] * power / 3600;
+					totalCarbon += sites[site] * power / 3600 * co2Eq;
+				}
+				sortedSites.sort(function(a, b) {
+					return b[1] - a[1];
+				});
+				/* Show only the top 15 sites by default */
+				var max = 15;
+				if(document.location.href.indexOf("show=all") != -1) {
+					max = sortedSites.length;
+				}
+
+				/* Add total row. */
+				row = document.createElement("tr");
+				cell = document.createElement("td");
+				cell.innerHTML = "<b>Total</b>";
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode((totalTime / 60).toFixed(2)));
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode(("100")));
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode(totalEnergy.toFixed(2)));
+				row.appendChild(cell);
+				cell = document.createElement("td");
+				cell.appendChild(document.createTextNode(totalCarbon.toFixed(2)));
+				row.appendChild(cell);
+				
+				table.appendChild(row);
+
+				for(var index = 0; ((index < sortedSites.length) && (index < max)); index++) {
+					var site = sortedSites[index][0];
+					row = document.createElement("tr");
+					cell = document.createElement("td");
+					var removeImage = document.createElement("img");
+					removeImage.src = chrome.extension.getURL("images/remove.png");
+
+					// TODO spacer
+					removeImage.title = "Remove and stop tracking.";
+					removeImage.width = 10;
+					removeImage.height = 10;
+					removeImage.onclick = addIgnoredSite(site);
+					cell.appendChild(removeImage);
+
+					// TODO truncate text, maybe?
+					var title = JSON.parse(localStorage.tabTitles)[site];
+					bkg.console.log("[popup] writing title" + title);
+					var titleLength = 30;
+
+					cell.appendChild(document.createTextNode(title.substring(0, Math.min(titleLength, title.length))));
+					// time
+					row.appendChild(cell);
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode((sites[site] / 60).toFixed(2)));
+					row.appendChild(cell);
+					// percentage
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode((sites[site] / totalTime * 100).toFixed(2)));
+					row.appendChild(cell);
+					// energy
+					cell = document.createElement("td");
+					var energy = sites[site] * power / 3600;
+					cell.appendChild(document.createTextNode((energy).toFixed(2)));
+					row.appendChild(cell);
+				
+					// carbon 
+					var carbon = energy * co2Eq;
+					cell = document.createElement("td");
+					cell.appendChild(document.createTextNode(carbon.toFixed(2)));
+					row.appendChild(cell);
+					
+					table.appendChild(row);
+				}
+				document.getElementById("stats").appendChild(table);
+
+				/* Add an option to show all stats */
+				var showAllLink = document.createElement("a");
+				showAllLink.onclick = function() {
+					chrome.tabs.create({
+						url : "popup.html?show=all"
+					});
+				}
+				/* Show the "Show All" link if there are some sites we didn't show. */
+				if(max < sortedSites.length) {
+					showAllLink.setAttribute("href", "javascript:void(0)");
+					showAllLink.appendChild(document.createTextNode("Show All"));
+					document.getElementById("options").appendChild(showAllLink);
+				}
+			}
+
+			function sendStats() {
+				chrome.extension.sendRequest({
+					action : "sendStats"
+				}, function(response) {
+					/* Reload the iframe. */
+					var iframe = document.getElementById("stats_frame");
+					iframe.src = iframe.src;
+				});
+			}
+
+			function clearStats() {
+				console.log("Request to clear stats.");
+				chrome.extension.sendRequest({
+					action : "clearStats"
+				}, function(response) {
+					initialize();
+				});
+			}
+
+			function togglePause() {
+				console.log("In toggle pause");
+				console.log("Value = " + localStorage["paused"]);
+				if(localStorage["paused"] == "false") {
+					console.log("Setting to Resume");
+					chrome.extension.sendRequest({
+						action : "pause"
+					}, function(response) {
+					});
+					document.getElementById("toggle_pause").innerHTML = "Resume Timer";
+				} else if(localStorage["paused"] == "true") {
+					console.log("Setting to Pause");
+					chrome.extension.sendRequest({
+						action : "resume"
+					}, function(response) {
+					});
+					document.getElementById("toggle_pause").innerHTML = "Pause Timer";
+				}
+			}
+
+			function setDevicePower() {
+				if(localStorage["deviceType"] == "laptop") {
+					bkg.console.log("[popup] - setting device power to 30W");
+					power = 30;
+				} else {
+					// assume it's a desktop
+					bkg.console.log("[popup] - setting device power to 78W");
+					power = 78;
+				}
+			}
+
+			var otherloc = new Array(0);
+			var ServerLocations = {
+				"locations" : [{
+					"city" : "Redwood City",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "807",
+					"zipcode" : "94063",
+					"longitude" : "-122.211",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "74.120.140.21",
+					"latitude" : "37.4914"
+				}, {
+					"city" : "Fremont",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "807",
+					"zipcode" : "94539",
+					"longitude" : "-121.896",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "64.62.243.90",
+					"latitude" : "37.5155"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "23.33.246.227",
+					"latitude" : "38"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "64.236.79.229",
+					"latitude" : "38"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "64.236.85.152",
+					"latitude" : "38"
+				}, {
+					"city" : "Sacramento",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "862",
+					"zipcode" : "95835",
+					"longitude" : "-121.561",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "69.80.196.159",
+					"latitude" : "38.6961"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "207.200.81.13",
+					"latitude" : "38"
+				}, {
+					"city" : "San Mateo",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "807",
+					"zipcode" : "94403",
+					"longitude" : "-122.304",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "70.42.129.35",
+					"latitude" : "37.5402"
+				}, {
+					"city" : "Seattle",
+					"region_code" : "WA",
+					"region_name" : "Washington",
+					"metrocode" : "819",
+					"zipcode" : "98144",
+					"longitude" : "-122.299",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "174.129.27.141",
+					"latitude" : "47.5839"
+				}, {
+					"city" : "Englewood",
+					"region_code" : "CO",
+					"region_name" : "Colorado",
+					"metrocode" : "751",
+					"zipcode" : "80112",
+					"longitude" : "-104.858",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "204.0.5.18",
+					"latitude" : "39.569"
+				}, {
+					"city" : "Englewood",
+					"region_code" : "CO",
+					"region_name" : "Colorado",
+					"metrocode" : "751",
+					"zipcode" : "80112",
+					"longitude" : "-104.858",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "204.0.5.51",
+					"latitude" : "39.569"
+				}, {
+					"city" : "Houston",
+					"region_code" : "TX",
+					"region_name" : "Texas",
+					"metrocode" : "618",
+					"zipcode" : "77002",
+					"longitude" : "-95.367",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "184.173.174.134",
+					"latitude" : "29.7523"
+				}, {
+					"city" : "Mount Laurel",
+					"region_code" : "NJ",
+					"region_name" : "New Jersey",
+					"metrocode" : "504",
+					"zipcode" : "08054",
+					"longitude" : "-74.9162",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "96.126.120.113",
+					"latitude" : "39.9572"
+				}, {
+					"city" : "Englewood",
+					"region_code" : "CO",
+					"region_name" : "Colorado",
+					"metrocode" : "751",
+					"zipcode" : "80112",
+					"longitude" : "-104.858",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "204.0.5.51",
+					"latitude" : "39.569"
+				}, {
+					"city" : "Pasadena",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "803",
+					"zipcode" : "91105",
+					"longitude" : "-118.166",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "173.241.242.7",
+					"latitude" : "34.1484"
+				}, {
+					"city" : "Englewood",
+					"region_code" : "CO",
+					"region_name" : "Colorado",
+					"metrocode" : "751",
+					"zipcode" : "80112",
+					"longitude" : "-104.858",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "204.0.5.16",
+					"latitude" : "39.569"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "23.56.13.229",
+					"latitude" : "38"
+				}, {
+					"city" : "",
+					"region_code" : "",
+					"region_name" : "",
+					"metrocode" : "",
+					"zipcode" : "",
+					"longitude" : "-97",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "64.236.79.229",
+					"latitude" : "38"
+				}, {
+					"city" : "Cambridge",
+					"region_code" : "MA",
+					"region_name" : "Massachusetts",
+					"metrocode" : "506",
+					"zipcode" : "02142",
+					"longitude" : "-71.0843",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "184.30.13.190",
+					"latitude" : "42.3626"
+				}, {
+					"city" : "Tempe",
+					"region_code" : "AZ",
+					"region_name" : "Arizona",
+					"metrocode" : "753",
+					"zipcode" : "85281",
+					"longitude" : "-111.917",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "68.142.122.70",
+					"latitude" : "33.4357"
+				}, {
+					"city" : "Alexandria",
+					"region_code" : "VA",
+					"region_name" : "Virginia",
+					"metrocode" : "511",
+					"zipcode" : "22312",
+					"longitude" : "-77.1527",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "64.237.103.151",
+					"latitude" : "38.8177"
+				}, {
+					"city" : "Mountain View",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "807",
+					"zipcode" : "94043",
+					"longitude" : "-122.057",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "74.125.91.120",
+					"latitude" : "37.4192"
+				}, {
+					"city" : "Westlake Village",
+					"region_code" : "CA",
+					"region_name" : "California",
+					"metrocode" : "803",
+					"zipcode" : "91361",
+					"longitude" : "-118.894",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "63.215.202.6",
+					"latitude" : "34.1444"
+				}, {
+					"city" : "Englewood",
+					"region_code" : "CO",
+					"region_name" : "Colorado",
+					"metrocode" : "751",
+					"zipcode" : "80112",
+					"longitude" : "-104.858",
+					"country_name" : "United States",
+					"country_code" : "US",
+					"ip" : "204.0.5.58",
+					"latitude" : "39.569"
+				}]
+			};
+
+			function initialize() {
+
+				// initialise the device power value from the user defined option
+				setDevicePower();
+
+				var stats = document.getElementById("stats");
+				if(stats.childNodes.length == 1) {
+					stats.removeChild(stats.childNodes[0]);
+				}
+
+				if(localStorage["storageType"] == "appengine") {
+					addFrame();
+				} else if(localStorage["storageType"] == "local") {
+					addLocalDisplay();
+				}
+
+				var link = document.getElementById("toggle_pause");
+				if(localStorage["paused"] == undefined || localStorage["paused"] == "false") {
+					localStorage["paused"] = "false";
+					link.innerHTML = "Pause Timer";
+				} else {
+					link.innerHTML = "Resume Timer";
+				}
+
+				var nextClearStats = localStorage["nextTimeToClear"];
+				if(nextClearStats) {
+					nextClearStats = parseInt(nextClearStats, 10);
+					nextClearStats = new Date(nextClearStats);
+					var nextClearDiv = document.getElementById("nextClear");
+					if(nextClearDiv.childNodes.length == 1) {
+						nextClearDiv.removeChild(nextClear.childNodes[0]);
+					}
+					nextClearDiv.appendChild(document.createTextNode("Next Reset: " + nextClearStats.toString()));
+				}
+
+				// get the own geo ip
+				otherloc = getOtherServerLatLong();
+				getGeoLocation();
+
+				var bkg = chrome.extension.getBackgroundPage();
+
+				//getLocationForServer('74.200.247.59');
+
+			}
+
+			function getOtherServerLatLong() {
+				var positions = new Array(0);
+				var bkg = chrome.extension.getBackgroundPage();
+				bkg.console.log('hello');
+				var loc;
+				for(loc in ServerLocations.locations) {
+
+					var latlng = new google.maps.LatLng(ServerLocations.locations[loc].latitude, ServerLocations.locations[loc].longitude);
+					bkg.console.log(latlng);
+					positions.push(latlng);
+
+				}
+
+				bkg.console.log('positions:');
+				bkg.console.log(positions);
+				return positions
+			}
+
+			function getLocationForServer(server) {
+
+				bkg.console.log('foo');
+				// var reqString = 'http://freegeoip.net/json/74.200.247.59';
+				var reqSrv = 'http://freegeoip.net/json/';
+				var location = {};
+
+				$.getJSON(reqSrv + server, function(data) {
+					bkg.console.log(data['latitude']);
+					location['latitude'] = data.latitude;
+					bkg.console.log(data.longitude);
+					location['longitude'] = data.longitude;
+
+					document.getElementById("map").addLocation
+				});
+				return location;
+
+			}
+
+			// Getting Geo Location
+			function getGeoLocation() {
+				if(navigator.geolocation) {
+					navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+				} else {
+					document.getElementById("errorMsg").innerText = "ERROR: browser does not support geo location";
+				}
+			}
+
+			// Getting Geo Location success callback
+			function successCallback(position) {
+
+				// Output the coordinates
+				document.getElementById("latitude").innerHTML = "Latitude: " + (+position.coords.latitude).toFixed(6);
+				document.getElementById("longitude").innerHTML = "Longitude: " + (+position.coords.longitude).toFixed(6);
+				document.getElementById("accuracy").innerHTML = "Accuracy: " + position.coords.accuracy + " m";
+
+				// Show location on Google Map
+				var latlng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+				var myOptions = {
+					zoom : getZoomLevel(position.coords.accuracy),
+					center : latlng,
+					mapTypeId : google.maps.MapTypeId.ROADMAP
+				};
+
+				var map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+				var marker = new google.maps.Marker({
+					position : latlng,
+					map : map,
+					title : "Your Location"
+				});
+
+				// for loop here
+				bkg.console.log('otherloc:');
+				bkg.console.log(otherloc);
+				var loc_i;
+				for(loc_i in otherloc) {
+					var marker = new google.maps.Marker({
+						position : otherloc[loc_i],
+						map : map,
+						title : "loc_N"
+					});
+
+				}
+				// map: an instance of google.maps.Map object
+				// latlng: an array of google.maps.LatLng objects
+				var latlngbounds = new google.maps.LatLngBounds();
+				for(var i = 0; i < otherloc.length; i++) {
+					latlngbounds.extend(otherloc[i]);
+				}
+
+				latlngbounds.extend(latlng);
+				map.fitBounds(latlngbounds);
+
+				var circle = new google.maps.Circle({
+					map : map,
+					radius : position.coords.accuracy,
+					fillOpacity : 0.0,
+					strokeColor : '#0000FF',
+					strokeOpacity : 0.5
+				});
+
+				circle.bindTo('center', marker, 'position');
+			}
+
+			// Getting Geo Location error callback
+			function errorCallback(error) {
+
+				switch(error.code) {
+
+					case error.TIMEOUT:
+						document.getElementById("errorMsg").innerHTML = "ERROR: " + error.message;
+						break;
+
+					default:
+						document.getElementById("errorMsg").innerHTML = "ERROR: " + error.message;
+				};
+			}
+
+			// Get map zoom level corresponding to the locaiton's accuracy
+			function getZoomLevel(accuracy) {
+
+				if(2000 >= accuracy) {
+					return 13;
+				} else if(4000 >= accuracy) {
+					return 12;
+				} else if(8000 >= accuracy) {
+					return 11;
+				} else if(16000 >= accuracy) {
+					return 10;
+				} else {
+					return 9;
+				}
+			}
+		</script>
+		<script type="text/javascript">$('energyIntensityStatus').append('<p>This is text</p>')</script>
+		<!--Load the AJAX API-->
+		<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+		<script type="text/javascript">
+			// Load the Visualization API and the piechart package.
+			google.load('visualization', '1.0', {
+				'packages' : ['corechart']
+			});
+
+			// Set a callback to run when the Google Visualization API is loaded.
+			google.setOnLoadCallback(drawChart);
+
+			// Callback that creates and populates a data table,
+			// instantiates the pie chart, passes in the data and
+			// draws it.
+			function drawChart() {
+
+				// Create the data table.
+				var data = new google.visualization.DataTable();
+
+				var sites = JSON.parse(localStorage.sites);
+
+				/* Sort sites by time spent */
+				var sortedSites = new Array();
+				var totalTime = 0;
+				for(site in sites) {
+					sortedSites.push([site, sites[site]]);
+					totalTime += sites[site];
+				}
+				sortedSites.sort(function(a, b) {
+					return b[1] - a[1];
+				});
+				/* Show only the top 15 sites by default */
+				var max = 15;
+				if(document.location.href.indexOf("show=all") != -1) {
+					max = sortedSites.length;
+				}
+
+				data.addColumn('string', 'url');
+				data.addColumn('number', 'Energy');
+
+				for(var index = 0; ((index < sortedSites.length) && (index < max)); index++) {
+					var site = sortedSites[index][0];
+<<<<<<< HEAD
+					data.addRows([[site, (sites[site].toFixed(6) * power.toFixed(2))]]);
+=======
+					var title = JSON.parse(localStorage.tabTitles)[site];
+				
+					
+					data.addRows([
+						[title, (sites[site].toFixed(6) * power.toFixed(2))]]);
+>>>>>>> 9a03d973f093cf21699c51685620f5e5837214ca
+				}
+
+				// Set chart options
+				var options = {
+					'title' : 'Energy Breakdown',
+					'width' : 500,
+					'height' : 250,
+					'colors' : ['green']
+				};
+
+				// Instantiate and draw our chart, passing in some options.
+				var chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+				chart.draw(data, options);
+			}
+		</script>
+	</head>
+	<body onload="initialize()">
+<<<<<<< HEAD
+		<div id="options" style="float:right">
+			<a id="toggle_pause" href="javascript:void(0)" onclick="togglePause()"></a>&nbsp; <a href="javascript:void(0)" onclick="clearStats()">Clear *All* Stats</a>&nbsp;
+		</div>
+		<h1 style="color:#222">njenje - Energy/CO2 Tracker</h1>
+		<div id='energyIntensityStatus' style="background-color:white;padding:1em;margin-top:2em;margin-bottom:1em;border:1px solid #666">
+			<img src="green-icon.jpeg" width=40px height=40px style="float:right;"></img>
+			<p style="margin-top:1em;color:#222;font-size:15px;font-weight:bold;">
+				Current Carbon Intensity
+			</p>
+			<p>
+				Dynamic based on AMEE data
+			</p>
+=======
+		
+		<h1 style="color:#222">njenje - The Dynamic Media Carbon/Energy Tracker</h1>
+		
+		
+		<div id='energyIntensityStatus' style="background-color:white;padding:1em;margin-top:2em;margin-bottom:1em;border:1px solid #666;min-height:42px;border-radius: 4px;">
+			<div id="options" style="float:right;margin-left:7em">
+				<a id="toggle_pause" href="javascript:void(0)" onclick="togglePause()"></a>&nbsp; <a href="javascript:void(0)" onclick="clearStats()">Clear *All* Stats</a>&nbsp;
+			</div>
+			
+			<img src="green-icon.jpeg" width=40px height=40px style="float:right;"></img>
+			
+			<h2 style="color:#222;font-size:15px;font-weight:bold;">Current Carbon Intensity</h2>
+			<p>Dynamic based on AMEE data</p>
+			
+			
+>>>>>>> 9a03d973f093cf21699c51685620f5e5837214ca
+		</div>
+		
+		<div style="clear:both;margin-top:2em;margin-bottom:1em;font-size:12px">
+			
+			<h2 style="color:black">How your energy has been used</h2>
+			
+		</div>
+		
+		<div id="chart_div"></div>
+		<div id="nextClear"></div>
+		<div class="section-header">
+			Geo Location
+		</div>
+		<div id="latitude">
+			Latitude: ...
+		</div>
+		<div id="longitude">
+			Longitude: ...
+		</div>
+		<div id="accuracy">
+			Accuracy: ...
+		</div>
+		<div id="errorMsg"></div>
+		
+		<div style="clear:both;margin-top:2em;margin-bottom:1em;font-size:12px">
+			
+			<h2 style="color:black">Servers used in media delivery</h2>
+			
+		</div>
+		
+		<div id="map_canvas"></div>
+		<div id="stats"></div>
+		<div id="images">
+	</body>
+</html>
