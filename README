@@ -1,0 +1,17 @@
+# Summary
+Calculate energy consumption based on browsing behaviour.
+
+# Howto
+ 0. Check out from git with 'git clone <url from above>'  
+ 1. Open Chrome
+ 2. Go wrench > tools > extensions > 'load unpacked extension', select folder where rep is checkout into
+ 	- an icon should appear near the address bar
+ 3. Do some browsing, then click the icon, a popup with the energy information should be displayed
+ 
+# Additional information
+- check options menu to set your device type (basic)
+- in the extensions pane, click background.html which should open the dev tools
+- open the console to see the log mgs from the extension
+
+TODO
+- get list of device models from server
